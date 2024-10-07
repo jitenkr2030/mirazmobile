@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet, Dimensions } from 'react-native';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
+
+const { width, height } = Dimensions.get('window');
+const ASPECT_RATIO = width / height;
+const LATITUDE_DELTA = 0.0922;
+const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 
 const MapScreen = () => {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -16,23 +23,68 @@ const MapScreen = () => {
 
       let location = await Location.getCurrentPositionAsync({});
       setLocation(location);
+      setRouteCoordinates([
+        {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        },
+      ]);
+
+      // Subscribe to location updates
+      const locationSubscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 5000,
+          distanceInterval: 10,
+        },
+        (newLocation) => {
+          setLocation(newLocation);
+          setRouteCoordinates((prevCoordinates) => [
+            ...prevCoordinates,
+            {
+              latitude: newLocation.coords.latitude,
+              longitude: newLocation.coords.longitude,
+            },
+          ]);
+        }
+      );
+
+      return () => {
+        if (locationSubscription) {
+          locationSubscription.remove();
+        }
+      };
     })();
   }, []);
 
+  if (!location) {
+    return <View style={styles.container} />;
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Map Screen</Text>
-      {errorMsg ? (
-        <Text style={styles.errorText}>{errorMsg}</Text>
-      ) : location ? (
-        <View style={styles.mapPlaceholder}>
-          <Text style={styles.mapText}>Map would be displayed here</Text>
-          <Text>Latitude: {location.coords.latitude}</Text>
-          <Text>Longitude: {location.coords.longitude}</Text>
-        </View>
-      ) : (
-        <Text style={styles.loadingText}>Loading location...</Text>
-      )}
+      <MapView
+        style={styles.map}
+        initialRegion={{
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: LATITUDE_DELTA,
+          longitudeDelta: LONGITUDE_DELTA,
+        }}
+      >
+        <Marker
+          coordinate={{
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          }}
+          title="Current Location"
+        />
+        <Polyline
+          coordinates={routeCoordinates}
+          strokeColor="#FF0000"
+          strokeWidth={3}
+        />
+      </MapView>
     </View>
   );
 };
@@ -43,29 +95,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  mapPlaceholder: {
-    width: '80%',
-    height: 200,
-    backgroundColor: '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  mapText: {
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  errorText: {
-    color: 'red',
-    textAlign: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
+  map: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
   },
 });
 
