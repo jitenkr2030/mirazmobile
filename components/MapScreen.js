@@ -1,59 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, PermissionsAndroid, Platform, Alert } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps'; // Ensure PROVIDER_GOOGLE is imported if using Google Maps
+import { View, Text, StyleSheet } from 'react-native';
+import * as Location from 'expo-location';
 
 const MapScreen = () => {
-  const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [location, setLocation] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
 
-  // Request location permission for Android
   useEffect(() => {
-    const requestLocationPermission = async () => {
-      if (Platform.OS === 'android') {
-        try {
-          const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-            {
-              title: 'Location Permission',
-              message: 'This app needs access to your location.',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'OK',
-            }
-          );
-          if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-            setHasLocationPermission(true);
-          } else {
-            Alert.alert('Location permission denied');
-          }
-        } catch (err) {
-          console.warn(err);
-        }
-      } else {
-        setHasLocationPermission(true); // iOS automatically grants location access
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setErrorMsg('Permission to access location was denied');
+        return;
       }
-    };
 
-    requestLocationPermission();
+      let location = await Location.getCurrentPositionAsync({});
+      setLocation(location);
+    })();
   }, []);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Map Screen</Text>
-      {hasLocationPermission ? (
-        <MapView
-          provider={PROVIDER_GOOGLE} // Remove if not using Google Maps
-          style={styles.map}
-          initialRegion={{
-            latitude: 37.78825,
-            longitude: -122.4324,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-          }}
-          showsUserLocation={true}
-          loadingEnabled={true}
-        />
+      {errorMsg ? (
+        <Text style={styles.errorText}>{errorMsg}</Text>
+      ) : location ? (
+        <View style={styles.mapPlaceholder}>
+          <Text style={styles.mapText}>Map would be displayed here</Text>
+          <Text>Latitude: {location.coords.latitude}</Text>
+          <Text>Longitude: {location.coords.longitude}</Text>
+        </View>
       ) : (
-        <Text style={styles.errorText}>Location permission is required to use the map.</Text>
+        <Text style={styles.loadingText}>Loading location...</Text>
       )}
     </View>
   );
@@ -62,24 +40,33 @@ const MapScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,
-    textAlign: 'center',
-    margin: 10,
+    fontWeight: 'bold',
+    marginBottom: 20,
   },
-  map: {
-    ...StyleSheet.absoluteFillObject,
+  mapPlaceholder: {
+    width: '80%',
+    height: 200,
+    backgroundColor: '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  mapText: {
+    fontSize: 16,
+    marginBottom: 10,
   },
   errorText: {
-    textAlign: 'center',
-    fontSize: 16,
     color: 'red',
+    textAlign: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
   },
 });
 
 export default MapScreen;
-
-
-
-

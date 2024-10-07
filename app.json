@@ -18,11 +18,17 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.jitenkumar.snacke9017b65c4db447eab7877513c070968"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "description": "Example usage"
+    "description": "Example usage",
+    "extra": {
+      "eas": {
+        "projectId": "3342a0db-0551-42b3-acd8-ecb63e8a219e"
+      }
+    }
   }
 }
